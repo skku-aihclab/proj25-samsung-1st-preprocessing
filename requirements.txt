@@ -1,0 +1,7 @@
+numpy
+pandas
+scipy
+openpyxl
+matplotlib
+tqdm
+pythonnet; sys_platform == "win32"   # step1 hpf 변환 (Windows 전용)
