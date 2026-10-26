@@ -153,8 +153,6 @@ data/labels/
 
 ### ③ 메타데이터 → `data/meta/video_csv_info.xlsx`
 
-같은 `csv_filename`이 두 번 나오는 행이 1개 있는데, 첫 행만 사용합니다.
-
 | 사용하는 컬럼 | 의미 |
 |---|---|
 | `csv_filename` | 센서 CSV 파일명 (매칭 키) |
@@ -165,9 +163,11 @@ data/labels/
 
 ### 참고: NAS CSV의 출처 (hpf → CSV)
 
-NAS의 CSV는 Trigno 원본 `.hpf`를 변환한 것이고, 엑셀 `start_time`도 hpf에서 나왔습니다. **전처리를 돌리는 데는 필요 없으며**, 원본을 다시 변환하거나 새 데이터를 추가할 때만 참고합니다. 변환 코드는 `step1_hpf_to_csv.py`입니다 (4절 STEP 1).
+NAS의 CSV는 Trigno 원본 `.hpf`를 변환한 것이고, 엑셀 `start_time`도 hpf에서 나왔습니다. 
+hpf 의 recording date와 센서 timestamp를 합쳐서 절대시간을 만들었으나, 부정확하여 step5에서 offset을 구해 정렬합니다.
+**전처리를 돌리는 데는 필요 없으며**, 원본을 다시 변환하거나 새 데이터를 추가할 때만 참고합니다. 변환 코드는 `step1_hpf_to_csv.py`입니다 (4절 STEP 1).
 
-**hpf 원본 구조** (수집 당시 저장 구조. step1은 이 구조를 입력으로 받음)
+**hpf 원본 구조** 
 
 ```
 <날짜>/                          250610, 250611, 250612, 250616, 250620, 250624, 250625, 250626, 250627
@@ -181,8 +181,8 @@ NAS의 CSV는 Trigno 원본 `.hpf`를 변환한 것이고, 엑셀 `start_time`�
 
 **`start_time` / `end_time`의 출처**
 - hpf 파일 앞부분 XML 헤더의 `<RecordingDate>`(예: `2025/06/04 14:34:24.0606115`)가 센서 녹화 시작 시각입니다.
-- 이 값을 `start_time`, `start_time + 녹화 길이`를 `end_time`으로 정리한 표가 `all_hpf_summary.csv`이고, 엑셀 두 열은 이 표에서 옮겨 적은 값입니다. NAS `1st/hpf_data/`의 hpf 중 엑셀에 있는 732개는 `RecordingDate`와 엑셀 `start_time`이 모두 일치합니다.
-- 주의: 헤더의 `<ChannelInformation><StartTime>`은 AM/PM이 없는 12시간제입니다(14:34 → `02:34`). 절대 쓰지 마세요.
+- 이 값을 `start_time`, `start_time + 녹화 길이`를 `end_time`으로 정리한 표가 `all_hpf_summary.csv`입니다. 
+- 주의: 헤더의 `<ChannelInformation><StartTime>`은 AM/PM이 없는 12시간제입니다(14:34 → `02:34`). 
 
 ---
 
@@ -203,17 +203,12 @@ python src/step6_downsample.py     # 148Hz 모델 입력
 python src/step7_counting_label.py # counting용 0/1 라벨
 ```
 
-- **step2 결과는 꼭 확인하세요.** `input_check.csv`에 `meta_without_sensor`, `label_not_in_meta` 등이 있으면 해당 파일은 이후 단계에서 빠집니다 (4절 STEP 2 표 참고).
-- 각 단계는 이전 단계 산출물만 있으면 따로 다시 돌릴 수 있습니다. 예를 들어 정렬 파라미터만 바꿨다면 step5만 다시 돌리면 됩니다.
-- step3, step6은 결과를 파일 단위로 이어 쓰므로 메모리를 많이 쓰지 않습니다. 대신 **step3 출력 CSV는 수 GB 단위**가 될 수 있습니다.
-- OS 제한은 없습니다 (Mac/Windows). step1만 Windows 전용입니다.
-
 ---
 
 ## 4. 단계별 설명
 
 ```
-(참고) hpf/ ── STEP1 ─→ raw/<운동>/<balance|unbalance>/*.csv,  meta/all_hpf_summary.csv
+hpf/ ── STEP1 ─→ raw/<운동>/<balance|unbalance>/*.csv,  meta/all_hpf_summary.csv
 
 raw/ · labels/ · meta/ ── STEP2 (점검) ─→ interim/input_check.csv
 
@@ -246,7 +241,6 @@ python src/step1_hpf_to_csv.py --summary-only   # 요약표만 (OS 무관)
 | OS | CSV 변환은 **Windows 전용** (`--summary-only`는 OS 무관) |
 | 소프트웨어 | EMGworks 설치 → `C:\Program Files (x86)\Delsys, Inc\EMGworks\Matlab Conversion Library\HPF.dll` (경로가 다르면 `config.py`의 `HPF_DLL_PATH` 수정) |
 | Python 패키지 | `pythonnet` (requirements.txt에 Windows 한정으로 포함) |
-| 자주 나는 오류 | `module 'clr' has no attribute 'AddReference'` → 이름이 같은 다른 `clr` 패키지가 깔린 것. `pip uninstall clr` 후 `pip install pythonnet` |
 
 ### STEP 2. 입력 점검: `step2_check_inputs.py`
 엑셀, 센서 CSV, 라벨을 파이프라인과 **같은 매칭 규칙**으로 대조해, 처리 중에 조용히 빠질 파일을 미리 보여줍니다. 아무 파일도 고치지 않습니다.
