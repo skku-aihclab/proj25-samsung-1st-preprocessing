@@ -84,13 +84,13 @@ preprocessing_1st/
 
 ## 2. 원본 데이터 준비
 
-파이프라인 입력은 아래 **3가지**이며, 센서 CSV와 영상 라벨은 NAS `Public/2025_samsung/1st/`에 있습니다 (연구실 서버에서는 `/home/user1/nas/Public/2025_samsung/1st/`). 정해진 위치에 두면 나머지(병합, 정렬, 다운샘플, counting 라벨)는 스크립트가 순서대로 만듭니다.
+파이프라인 입력은 아래 **3가지**이며, 센서 CSV와 영상 라벨은 NAS `Public/2025_samsung/1st/`에 있습니다. 정해진 위치에 두면 나머지(병합, 정렬, 다운샘플, counting 라벨)는 스크립트가 순서대로 만듭니다.
 
-| | 원본 | → 둘 위치 | 비고 |
-|---|---|---|---|
-| ① | 센서 CSV: NAS `Public/2025_samsung/1st/data/<운동>/<balance\|unbalance>/*.csv` (895개) | `data/raw/` | 운동 폴더째 복사 |
-| ② | 영상 라벨: NAS `Public/2025_samsung/1st/label/timestamp_label/*.csv` (953개) | `data/labels/` | 그대로 복사. 같은 위치의 `absolute_label/`은 복사하지 않음 |
-| ③ | `video_csv_info.xlsx` (1040행, bal + unbal 전체) | `data/meta/` | **이미 들어 있음.** 엑셀을 수정했다면 이 파일을 교체 |
+| | 원본 | → 둘 위치 |
+|---|---|---|
+| ① | 센서 CSV: NAS `Public/2025_samsung/1st/data/<운동>/<balance\|unbalance>/*.csv` (895개) | `data/raw/` | 
+| ② | 영상 라벨: NAS `Public/2025_samsung/1st/label/timestamp_label/*.csv` (953개) | `data/labels/` |
+| ③ | `video_csv_info.xlsx` (1040행, bal + unbal 전체) | `data/meta/` | 
 
 준비가 끝나면 3절 순서대로 실행합니다. 가장 먼저 step2가 세 입력이 서로 잘 맞는지 점검합니다.
 
@@ -243,7 +243,6 @@ python src/step1_hpf_to_csv.py --summary-only   # 요약표만 (OS 무관)
 | Python 패키지 | `pythonnet` (requirements.txt에 Windows 한정으로 포함) |
 
 ### STEP 2. 입력 점검: `step2_check_inputs.py`
-엑셀, 센서 CSV, 라벨을 파이프라인과 **같은 매칭 규칙**으로 대조해, 처리 중에 조용히 빠질 파일을 미리 보여줍니다. 아무 파일도 고치지 않습니다.
 출력: `interim/input_check.csv` (`issue, name, group, subject, exercise, detail`)
 
 | issue | 의미 | 조치 |
@@ -345,10 +344,10 @@ rep counting 모델의 입력을 만듭니다. counting 모델은 윈도우 중�
 
 ---
 
-## 6. 배경: 왜 정렬이 필요한가
+## 6. 배경: 정렬의 필요성
 
 ### 연구 목적
-운동 수행 중 기록된 **EMG 기반 peak point**와 **비디오 기반 수동 라벨링(Start / Peak / End)** 을 align하여, 서로 다른 기준으로 측정된 시계열 데이터를 통합한다.
+운동 수행 중 기록된 **EMG 기반 peak point**와 **비디오 기반 수동 라벨링(Start / Peak / End)** 을 align하여, 서로 다른 기준으로 측정된 시계열 데이터를 통합합니다. 
 
 ### 문제 정의
 
@@ -363,30 +362,30 @@ rep counting 모델의 입력을 만듭니다. counting 모델은 윈도우 중�
 ### 해결 로직
 
 **① 영상 label에 임시 절대시간 부여** (STEP3, STEP4)
-영상 상대시간에 센서 기반 Recording Date를 더해 임시 절대시간을 만든다. 영상과 센서를 같은 시간축에 올려 놓고 offset을 구하기 위한 단계.
+영상 상대시간에 센서 기반 Recording Date를 더해 임시 절대시간을 만듭니다. 영상과 센서를 같은 시간축에 올려 놓고 offset을 구하기 위한 단계.
 
 ![정렬 전](docs/alignment/01_before_alignment.png)
 
-*그림 1. 정렬 전. 임시 절대시간만 부여하면 Peak 라벨(빨간 실선)이 실제 EMG burst와 어긋나 있다.*
+*그림 1. 정렬 전. 임시 절대시간만 부여하면 Peak 라벨(빨간 실선)이 실제 EMG burst와 어긋나 있습니다.*
 
 **② Sensor peak candidate 탐색** (STEP5-1)
-EMG 2–8번 센서의 pEMG RMS에서 peak point를 탐지한다. 영상 라벨을 참고해 운동별 최소 peak 간격을 설정하고(barbell curl 1.5s, barbellrow 0.5s, deadlift 3.0s 등), 그 간격 이상 떨어진 local maxima만 peak로 인정한다.
+EMG 2–8번 센서의 pEMG RMS에서 peak point를 탐지한다. 영상 라벨을 참고해 운동별 최소 peak 간격을 설정하고(barbell curl 1.5s, barbellrow 0.5s, deadlift 3.0s 등), 그 간격 이상 떨어진 local maxima만 peak로 인정합니다.
 
 ![센서 peak 후보](docs/alignment/02_sensor_peak_candidates.png)
 
 *그림 2. EMG_3, EMG_4 RMS 곡선 위에 추출된 peak 후보(빨간 선).*
 
 **③ Best sensor 선정** (STEP5-2)
-비디오 Peak 라벨 간 interval을 ground truth로 두고, 센서별 peak interval과의 MSE가 가장 낮은 센서를 고른다. `is_1RM == True`처럼 interval 정보가 부족하면 peak 간 절대시간 MSE로 고른다.
+비디오 Peak 라벨 간 interval을 ground truth로 두고, 센서별 peak interval과의 MSE가 가장 낮은 센서를 고릅니다. `is_1RM == True`처럼 interval 정보가 부족하면 peak 간 절대시간 MSE로 고릅니다. 
 
 **④ Offset 계산** (STEP5-3)
-Best sensor에서 interval이 가장 유사한 pair를 찾아, 그 pair의 label peak와 sensor peak의 시간 차이를 offset으로 쓴다.
+Best sensor에서 interval이 가장 유사한 pair를 찾아, 그 pair의 label peak와 sensor peak의 시간 차이를 offset으로 씁니다. 
 `interval_l = label[i+1] − label[i]`, `interval_s = sensor[i+1] − sensor[i]`
 
 **⑤ Offset 적용 및 정렬** (STEP5-4)
-구한 offset을 비디오 라벨 시간(Start/Peak/End)에 반영한다.
+구한 offset을 비디오 라벨 시간(Start/Peak/End)에 반영합니다. 
 
 ![정렬 후](docs/alignment/03_after_alignment.png)
 
-*그림 3. 정렬 후. Peak 라벨(빨간 실선)이 EMG burst에 맞춰졌다.*
+*그림 3. 정렬 후. Peak 라벨(빨간 실선)이 EMG burst에 맞춰졌습니다.*
 
