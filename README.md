@@ -72,10 +72,10 @@ preprocessing_1st/
 │   ├── step6_downsample.py    # 148Hz 다운샘플 (모델 입력)
 │   └── step7_counting_label.py# counting용 샘플 단위 0/1 라벨
 └── data/
-    ├── raw/                   # ① 센서 CSV (NAS 1st/data)        ← 직접 넣기
-    ├── labels/                # ② 영상 라벨 CSV (NAS timestamp_label) ← 직접 넣기
+    ├── raw/                   # ① 센서 CSV (NAS 1st/data)                       ← 직접 넣기
+    ├── labels/                # ② 영상 라벨 CSV (NAS 1st/label/timestamp_label) ← 직접 넣기
     ├── meta/                  # ③ video_csv_info.xlsx              (들어 있음)
-    ├── hpf/                   # (참고) Trigno 원본 .hpf. step1을 돌릴 때만 사용
+    ├── hpf/                   # (참고) Trigno 원본 .hpf (NAS 1st/hpf_data). step1을 돌릴 때만 사용
     ├── interim/               # 중간 산출물 (자동 생성)
     └── output/                # 최종 산출물 (자동 생성)
 ```
@@ -84,19 +84,19 @@ preprocessing_1st/
 
 ## 2. 원본 데이터 준비
 
-파이프라인 입력은 아래 **3가지**이며, 모두 NAS에 있습니다. 정해진 위치에 두면 나머지(병합, 정렬, 다운샘플, counting 라벨)는 스크립트가 순서대로 만듭니다.
+파이프라인 입력은 아래 **3가지**이며, 센서 CSV와 영상 라벨은 NAS `Public/2025_samsung/1st/`에 있습니다 (연구실 서버에서는 `/home/user1/nas/Public/2025_samsung/1st/`). 정해진 위치에 두면 나머지(병합, 정렬, 다운샘플, counting 라벨)는 스크립트가 순서대로 만듭니다.
 
 | | 원본 | → 둘 위치 | 비고 |
 |---|---|---|---|
-| ① | 센서 CSV: NAS `1st/data/<운동>/<balance\|unbalance>/*.csv` (895개) | `data/raw/` | 운동 폴더째 복사 |
-| ② | 영상 라벨: NAS `1st/label/timestamp_label/*.csv` (953개) | `data/labels/` | 그대로 복사. `absolute_label/`은 복사하지 않음 |
+| ① | 센서 CSV: NAS `Public/2025_samsung/1st/data/<운동>/<balance\|unbalance>/*.csv` (895개) | `data/raw/` | 운동 폴더째 복사 |
+| ② | 영상 라벨: NAS `Public/2025_samsung/1st/label/timestamp_label/*.csv` (953개) | `data/labels/` | 그대로 복사. 같은 위치의 `absolute_label/`은 복사하지 않음 |
 | ③ | `video_csv_info.xlsx` (1040행, bal + unbal 전체) | `data/meta/` | **이미 들어 있음.** 엑셀을 수정했다면 이 파일을 교체 |
 
 준비가 끝나면 3절 순서대로 실행합니다. 가장 먼저 step2가 세 입력이 서로 잘 맞는지 점검합니다.
 
 ### ① 센서 CSV → `data/raw/<운동>/<balance|unbalance>/`
 
-NAS `1st/data/` 아래 운동 폴더들을 그대로 복사합니다.
+NAS `Public/2025_samsung/1st/data/` 아래 운동 폴더들을 그대로 복사합니다.
 
 ```
 data/raw/
@@ -134,7 +134,7 @@ data/raw/
 
 ### ② 영상 라벨 CSV → `data/labels/<video_name>.csv`
 
-영상을 보며 수동으로 찍은 rep별 Start / Peak / End 파일입니다 (NAS `1st/label/timestamp_label/`).
+영상을 보며 수동으로 찍은 rep별 Start / Peak / End 파일입니다 (NAS `Public/2025_samsung/1st/label/timestamp_label/`).
 
 ```
 data/labels/
@@ -176,8 +176,8 @@ hpf 의 recording date와 센서 timestamp를 합쳐서 절대시간을 만들�
 ```
 
 - 수집 당시 운동 폴더명에 `deadlfit`, `barbelrow` 오타가 있습니다 (step1은 `deadlift`, `barbellrow`로 바로잡아 저장).
-- 변환 결과 CSV를 운동 기준(`<운동>/<balance|unbalance>/`)으로 다시 묶은 것이 NAS `1st/data/`입니다.
-- NAS `1st/hpf_data/`의 hpf도 운동 기준으로 다시 묶여 있어 날짜 폴더가 없습니다. step1에 넣으려면 위 날짜 구조로 다시 배치해야 합니다 (날짜는 hpf `RecordingDate`로 알 수 있음).
+- 변환 결과 CSV를 운동 기준(`<운동>/<balance|unbalance>/`)으로 다시 묶은 것이 NAS `Public/2025_samsung/1st/data/`입니다.
+- NAS `Public/2025_samsung/1st/hpf_data/`의 hpf(772개)도 운동 기준으로 다시 묶여 있어 날짜 폴더가 없습니다. step1에 넣으려면 위 날짜 구조로 다시 배치해야 합니다 (날짜는 hpf `RecordingDate`로 알 수 있음).
 
 **`start_time` / `end_time`의 출처**
 - hpf 파일 앞부분 XML 헤더의 `<RecordingDate>`(예: `2025/06/04 14:34:24.0606115`)가 센서 녹화 시작 시각입니다.
